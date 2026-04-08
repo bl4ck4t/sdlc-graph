@@ -1,3 +1,7 @@
+mod domain;
+mod application;
+mod infrastructure;
+
 use tokio::net::{TcpListener};
 
 use axum::{Router, routing::get};
