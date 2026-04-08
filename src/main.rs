@@ -1,3 +1,4 @@
+mod api;
 mod domain;
 mod application;
 mod infrastructure;
@@ -8,7 +9,7 @@ use tokio::net::{TcpListener};
 
 use axum::{Router, extract::State, routing::get};
 
-use crate::{domain::repository::GraphRepository, infrastructure::in_memory_repository::InMemoryGraphRepository};
+use crate::{api::user_handler::create_user, domain::repository::GraphRepository, infrastructure::in_memory_repository::InMemoryGraphRepository};
 
 #[derive(Clone)]
 struct AppState {
@@ -26,6 +27,7 @@ async fn main() {
     let app = Router::new()
         .route("/", get(root))
         .route("/users/:id", get(get_user))
+        .route("/users", axum::routing::post(create_user))
         .with_state(state);
 
     let listener = TcpListener::bind("127.0.0.1:3000")
