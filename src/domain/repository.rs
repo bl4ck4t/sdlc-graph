@@ -10,4 +10,9 @@ pub trait GraphRepository: Send + Sync {
 
     async fn create_commit(&self, commit: Commit);
     async fn get_commit(&self, id: &str) -> Option<Commit>;
+
+    async fn link_commit_to_repository(&self, commit_id: &str, repo_id: &str);
+    async fn link_commit_to_user(&self, commit_id: &str, user_id: &str);
+    async fn get_commits_by_repository(&self, repo_id: &str) -> Vec<Commit>;
+    async fn get_commits_by_user(&self, user_id: &str) -> Vec<Commit>;
 }

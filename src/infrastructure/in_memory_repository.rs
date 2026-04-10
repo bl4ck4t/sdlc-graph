@@ -11,7 +11,11 @@ use crate::domain::repository_entity::Repository;
 pub struct InMemoryGraphRepository {
     users: RwLock<HashMap<String, User>>,
     repositories: RwLock<HashMap<String, Repository>>,
-    commits: RwLock<HashMap<String, Commit>>
+    commits: RwLock<HashMap<String, Commit>>,
+
+    //Relationships
+    commit_to_repo: RwLock<HashMap<String, String>>,
+    commit_to_user: RwLock<HashMap<String, String>>
 }
 
 impl InMemoryGraphRepository {
@@ -19,7 +23,9 @@ impl InMemoryGraphRepository {
         Self {
             users: RwLock::new(HashMap::new()),
             repositories: RwLock::new(HashMap::new()),
-            commits: RwLock::new(HashMap::new())
+            commits: RwLock::new(HashMap::new()),
+            commit_to_repo: RwLock::new(HashMap::new()),
+            commit_to_user: RwLock::new(HashMap::new())
         }
     }
 }
@@ -54,5 +60,35 @@ impl GraphRepository for InMemoryGraphRepository {
     async fn get_commit(&self, id: &str) -> Option<Commit> {
         let commits = self.commits.read().await;
         commits.get(id).cloned()
+    }
+
+    async fn link_commit_to_repository(&self, commit_id: &str, repo_id: &str) {
+        let mut map = self.commit_to_repo.write().await;
+        map.insert(commit_id.to_string(), repo_id.to_string());
+    }
+
+    async fn link_commit_to_user(&self, commit_id: &str, user_id: &str) {
+        let mut map = self.commit_to_user.write().await;
+        map.insert(commit_id.to_string(), user_id.to_string());
+    }
+
+    async fn get_commits_by_repository(&self, repo_id: &str) -> Vec<Commit> {
+        let map = self.commit_to_repo.read().await;
+        let commits = self.commits.read().await;
+
+        map.iter()
+            .filter(|(_, r_id)| r_id == &repo_id)
+            .filter_map(|(c_id, _)| commits.get(c_id).cloned())
+            .collect()
+    }
+
+    async fn get_commits_by_user(&self, user_id: &str) -> Vec<Commit> {
+        let map = self.commit_to_user.read().await;
+        let commits = self.commits.read().await;
+
+        map.iter()
+            .filter(|(_, u_id)| u_id == &user_id)
+            .filter_map(|(c_id, _)| commits.get(c_id).cloned())
+            .collect()
     }
 }
