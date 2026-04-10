@@ -7,9 +7,9 @@ use std::sync::Arc;
 
 use tokio::net::{TcpListener};
 
-use axum::{Router, extract::State, routing::get};
+use axum::{Router, extract::State, routing::{get, post}};
 
-use crate::{api::user_handler::create_user, domain::repository::GraphRepository, infrastructure::in_memory_repository::InMemoryGraphRepository};
+use crate::{api::user_handler::{create_user, get_commits_by_repository, get_commits_by_user, link_commit_to_repository, link_commit_to_user}, domain::repository::GraphRepository, infrastructure::in_memory_repository::InMemoryGraphRepository};
 
 #[derive(Clone)]
 struct AppState {
@@ -28,6 +28,22 @@ async fn main() {
         .route("/", get(root))
         .route("/users/:id", get(get_user))
         .route("/users", axum::routing::post(create_user))
+
+        //edges
+        .route(
+            "/commits/:commit_id/link-repo/:repo_id",
+            post(link_commit_to_repository)
+        )
+
+        .route(
+            "/commits/:commit_id/user/:user_id",
+            post(link_commit_to_user)    
+        )
+
+        // Graph Queries
+        .route("/repos/:id/commits", get(get_commits_by_repository))
+        .route("/users/:id/commits", get(get_commits_by_user))
+
         .with_state(state);
 
     let listener = TcpListener::bind("127.0.0.1:3000")
