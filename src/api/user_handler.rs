@@ -1,13 +1,25 @@
 use axum::{Json, extract::{Path, State}, response::IntoResponse};
 use serde::Deserialize;
 
-use crate::{AppState, domain::{User, commit::Commit, repository::GraphRepository}};
+use crate::{AppState, domain::{User, commit::Commit, repository::GraphRepository, repository_entity::Repository}};
 
 #[derive(Deserialize)]
 pub struct CreateUserRequest {
     id: String,
     username: String,
     email: String
+}
+
+#[derive(Deserialize)]
+pub struct CreateRepositoryRequest {
+    pub id: String,
+    pub name: String
+}
+
+#[derive(Deserialize)]
+pub struct CreateCommitRequest {
+    pub id: String,
+    pub message: String
 }
 
 pub async fn create_user(
@@ -18,6 +30,26 @@ pub async fn create_user(
     state.repo.create_user(user).await;
 
     "User Created"
+}
+
+pub async fn create_repository(
+    State(state) : State<AppState>,
+    Json(payload): Json<CreateRepositoryRequest>
+) -> impl IntoResponse {
+    let repo = Repository::new(payload.id, payload.name);
+    state.repo.create_repository(repo).await;
+
+    "Repository Created"
+}
+
+pub async fn create_commit(
+    State(state) : State<AppState>,
+    Json(payload): Json<CreateCommitRequest>
+) -> impl IntoResponse {
+    let commit = Commit::new(payload.id, payload.message);
+    state.repo.create_commit(commit).await;
+
+    "Commit Created"
 }
 
 pub async fn link_commit_to_repository(

@@ -9,7 +9,7 @@ use tokio::net::{TcpListener};
 
 use axum::{Router, extract::State, routing::{get, post}};
 
-use crate::{api::user_handler::{create_user, get_commits_by_repository, get_commits_by_user, link_commit_to_repository, link_commit_to_user}, domain::repository::GraphRepository, infrastructure::in_memory_repository::InMemoryGraphRepository};
+use crate::{api::user_handler::{create_commit, create_repository, create_user, get_commits_by_repository, get_commits_by_user, link_commit_to_repository, link_commit_to_user}, domain::repository::GraphRepository, infrastructure::in_memory_repository::InMemoryGraphRepository};
 
 #[derive(Clone)]
 struct AppState {
@@ -26,8 +26,18 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(root))
-        .route("/users/:id", get(get_user))
+
+        //Users
         .route("/users", axum::routing::post(create_user))
+        .route("/users/:id", get(get_user))
+        .route("/users/:id/commits", get(get_commits_by_user))
+
+        //Repositories
+        .route("/repos", post(create_repository))
+        .route("/repos/:id/commits", get(get_commits_by_repository))
+
+        //Commits
+        .route("/commits", post(create_commit))
 
         //edges
         .route(
@@ -36,13 +46,9 @@ async fn main() {
         )
 
         .route(
-            "/commits/:commit_id/user/:user_id",
+            "/commits/:commit_id/link-user/:user_id",
             post(link_commit_to_user)    
         )
-
-        // Graph Queries
-        .route("/repos/:id/commits", get(get_commits_by_repository))
-        .route("/users/:id/commits", get(get_commits_by_user))
 
         .with_state(state);
 
