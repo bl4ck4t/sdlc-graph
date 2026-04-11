@@ -1,9 +1,10 @@
 use axum::{Json, extract::{Path, State}};
 use serde::Deserialize;
+use tracing::{info, instrument};
 
 use crate::{AppState, api::error::AppError, domain::{User, commit::Commit, repository::GraphRepository, repository_entity::Repository}};
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct CreateUserRequest {
     id: String,
     username: String,
@@ -41,10 +42,13 @@ fn validate_email(email: &str) -> Result<(), AppError> {
     Ok(())
 }
 
+#[instrument(skip(state))]
 pub async fn create_user(
     State(state) : State<AppState>,
     Json(payload): Json<CreateUserRequest>
 ) -> Result<Json<User>, AppError> {
+
+    info!("creating user with id={}", payload.id);
 
     validate_non_empty("id", &payload.id)?;
     validate_non_empty("username", &payload.username)?;
@@ -57,10 +61,14 @@ pub async fn create_user(
     Ok(Json(user))
 }
 
+
 pub async fn get_user(
     State(state): State<AppState>,
     Path(id): Path<String>
 ) -> Result<Json<User>, AppError> {
+
+    info!("fetching user with id={}", id);
+
     let user = state.repo.get_user(&id).await?;
     Ok(Json(user))
 }
@@ -69,6 +77,8 @@ pub async fn create_repository(
     State(state) : State<AppState>,
     Json(payload): Json<CreateRepositoryRequest>
 ) -> Result<Json<Repository>, AppError> {
+
+    info!("creating repository with id={}", payload.id);
 
     validate_non_empty("id", &payload.id)?;
     validate_non_empty("name", &payload.name)?;
@@ -84,6 +94,8 @@ pub async fn create_commit(
     Json(payload): Json<CreateCommitRequest>
 ) -> Result<Json<Commit>, AppError> {
 
+    info!("creating commit with id={}", payload.id);
+
     validate_non_empty("id", &payload.id)?;
     validate_non_empty("message", &payload.message)?;
 
@@ -97,6 +109,9 @@ pub async fn get_repository(
     State(state) : State<AppState>,
     Path(id): Path<String>
 ) -> Result<Json<Repository>, AppError> {
+
+    info!("fetching repository with id={}", id);
+
     let repo = state.repo.get_repository(&id).await?;
     Ok(Json(repo))
 }
@@ -105,6 +120,9 @@ pub async fn get_commit(
     State(state) : State<AppState>,
     Path(id): Path<String>
 ) -> Result<Json<Commit>, AppError> {
+
+    info!("fetching commit with id={}", id);
+
     let commit = state.repo.get_commit(&id).await?;
     Ok(Json(commit))
 }
@@ -113,6 +131,12 @@ pub async fn link_commit_to_repository(
     State(state) : State<AppState>,
     Path((commit_id, repo_id)): Path<(String, String)>
 ) -> Result<&'static str, AppError> {
+
+    info!(
+        "linking commit {} to repository {}",
+        commit_id, repo_id
+    );
+
     state
         .repo
         .link_commit_to_repository(&commit_id, &repo_id)
@@ -125,6 +149,12 @@ pub async fn link_commit_to_user(
     State(state) : State<AppState>,
     Path((commit_id, user_id)): Path<(String, String)>
 ) -> Result<&'static str, AppError> {
+
+    info!(
+        "linking commit {} to user {}",
+        commit_id, user_id
+    );
+
     state
         .repo
         .link_commit_to_user(&commit_id, &user_id)
@@ -135,8 +165,11 @@ pub async fn link_commit_to_user(
 
 pub async fn get_commits_by_repository(
     State(state) : State<AppState>,
-    Path((repo_id)): Path<String>
+    Path(repo_id): Path<String>
 ) -> Result<Json<Vec<Commit>>, AppError> {
+
+    info!("fetching commits for repo {}", repo_id);
+
     let commits = state.repo.get_commits_by_repository(&repo_id).await?;
 
     Ok(Json(commits))
@@ -144,8 +177,11 @@ pub async fn get_commits_by_repository(
 
 pub async fn get_commits_by_user(
     State(state) : State<AppState>,
-    Path((user_id)): Path<String>
+    Path(user_id): Path<String>
 ) -> Result<Json<Vec<Commit>>, AppError> {
+
+    info!("fetching commits for user {}", user_id);
+
     let commits = state.repo.get_commits_by_user(&user_id).await?;
 
     Ok(Json(commits))
