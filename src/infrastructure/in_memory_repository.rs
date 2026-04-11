@@ -1,12 +1,9 @@
 use std::collections::HashMap;
-use std::sync::Arc;
-
-use axum::Json;
 use tokio::sync::RwLock;
 
 use crate::api::error::AppError;
 use crate::domain::commit::Commit;
-use crate::domain::repository::{self, GraphRepository};
+use crate::domain::repository::{GraphRepository};
 use crate::domain::User;
 use crate::domain::repository_entity::Repository;
 

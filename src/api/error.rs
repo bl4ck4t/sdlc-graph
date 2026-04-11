@@ -1,4 +1,4 @@
-use axum::{Json, http::{StatusCode, status}, response::{IntoResponse, Response}};
+use axum::{Json, http::{StatusCode}, response::{IntoResponse, Response}};
 use serde::Serialize;
 use thiserror::Error;
 
@@ -23,7 +23,10 @@ pub enum AppError {
     CommitAlreadyExists,
 
     #[error("Internal Server Error")]
-    InternalServerError
+    InternalServerError,
+
+    #[error("Invalid input: {0}")]
+    ValidationError(String),
 }
 
 #[derive(Serialize)]
@@ -41,6 +44,7 @@ impl IntoResponse for AppError {
             AppError::UserAlreadyExists => StatusCode::CONFLICT,
             AppError::RepositoryAlreadyExists => StatusCode::CONFLICT,
             AppError::CommitAlreadyExists => StatusCode::CONFLICT,
+            AppError::ValidationError(_) => StatusCode::BAD_REQUEST,
         };
 
         let body = Json(ErrorResponse {

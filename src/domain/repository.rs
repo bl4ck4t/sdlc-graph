@@ -1,5 +1,3 @@
-use axum::Json;
-
 use crate::{api::error::AppError, domain::{User, commit::Commit, repository_entity::Repository}};
 
 #[async_trait::async_trait]

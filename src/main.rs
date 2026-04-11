@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use tokio::net::{TcpListener};
 
-use axum::{Router, extract::State, routing::{get, post}};
+use axum::{Router, routing::{get, post}};
 
 use crate::{api::user_handler::{create_commit, create_repository, create_user, get_commit, get_commits_by_repository, get_commits_by_user, get_repository, get_user, link_commit_to_repository, link_commit_to_user}, domain::repository::GraphRepository, infrastructure::in_memory_repository::InMemoryGraphRepository};
 
