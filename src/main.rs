@@ -9,7 +9,7 @@ use tokio::net::{TcpListener};
 
 use axum::{Router, extract::State, routing::{get, post}};
 
-use crate::{api::user_handler::{create_commit, create_repository, create_user, get_commits_by_repository, get_commits_by_user, link_commit_to_repository, link_commit_to_user}, domain::repository::GraphRepository, infrastructure::in_memory_repository::InMemoryGraphRepository};
+use crate::{api::user_handler::{create_commit, create_repository, create_user, get_commit, get_commits_by_repository, get_commits_by_user, get_repository, get_user, link_commit_to_repository, link_commit_to_user}, domain::repository::GraphRepository, infrastructure::in_memory_repository::InMemoryGraphRepository};
 
 #[derive(Clone)]
 struct AppState {
@@ -28,16 +28,18 @@ async fn main() {
         .route("/", get(root))
 
         //Users
-        .route("/users", axum::routing::post(create_user))
+        .route("/users", post(create_user))
         .route("/users/:id", get(get_user))
         .route("/users/:id/commits", get(get_commits_by_user))
 
         //Repositories
         .route("/repos", post(create_repository))
+        .route("/repos/:id", get(get_repository))
         .route("/repos/:id/commits", get(get_commits_by_repository))
 
         //Commits
         .route("/commits", post(create_commit))
+        .route("/commits/:id", get(get_commit))
 
         //edges
         .route(
@@ -69,14 +71,3 @@ async fn root() -> &'static str {
     "Hello, SDLC Graph!"
 }
 
-async fn get_user(
-    State(state): State<AppState>,
-    axum::extract::Path(id): axum::extract::Path<String>
-) -> String {
-    let user = state.repo.get_user(&id).await;
-
-    match user {
-        Some(u) => format!("User found: {}", u.username),
-        None => "User not found".to_string(),
-    }
-}
