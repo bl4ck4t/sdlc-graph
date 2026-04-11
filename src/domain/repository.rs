@@ -5,10 +5,10 @@ pub trait GraphRepository: Send + Sync {
     async fn create_user(&self, user: User) -> Result<(), AppError>;
     async fn get_user(&self, id: &str) -> Result<User, AppError>;
 
-    async fn create_repository(&self, repo: Repository);
+    async fn create_repository(&self, repo: Repository) -> Result<(), AppError>;
     async fn get_repository(&self, id: &str) -> Result<Repository, AppError>;
 
-    async fn create_commit(&self, commit: Commit);
+    async fn create_commit(&self, commit: Commit) -> Result<(), AppError>;
     async fn get_commit(&self, id: &str) -> Result<Commit, AppError>;
 
     async fn link_commit_to_repository(&self, commit_id: &str, repo_id: &str) -> Result<(), AppError>;

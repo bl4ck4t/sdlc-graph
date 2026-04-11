@@ -51,9 +51,16 @@ impl GraphRepository for InMemoryGraphRepository {
             .ok_or(AppError::UserNotFound)
     }
 
-    async fn create_repository(&self, repo: Repository) {
+    async fn create_repository(&self, repo: Repository) -> Result<(), AppError>{
         let mut repos = self.repositories.write().await;
+
+        if repos.contains_key(&repo.id) {
+            return Err(AppError::RepositoryAlreadyExists);
+        }
+
         repos.insert(repo.id.clone(), repo);
+
+        Ok(())
     }
 
     async fn get_repository(&self, id: &str) -> Result<Repository, AppError> {
@@ -64,9 +71,15 @@ impl GraphRepository for InMemoryGraphRepository {
             .ok_or(AppError::RepositoryNotFound)
     }
 
-    async fn create_commit(&self, commit: Commit) {
+    async fn create_commit(&self, commit: Commit) -> Result<(), AppError>{
         let mut commits = self.commits.write().await;
+
+        if commits.contains_key(&commit.id) {
+            return Err(AppError::CommitAlreadyExists);
+        }
+
         commits.insert(commit.id.clone(), commit);
+        Ok(())
     }
 
     async fn get_commit(&self, id: &str) -> Result<Commit, AppError> {

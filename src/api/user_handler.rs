@@ -74,7 +74,7 @@ pub async fn create_repository(
     validate_non_empty("name", &payload.name)?;
 
     let repo = Repository::new(payload.id, payload.name);
-    state.repo.create_repository(repo.clone()).await;
+    state.repo.create_repository(repo.clone()).await?;
 
     Ok(Json(repo))
 }
@@ -88,7 +88,7 @@ pub async fn create_commit(
     validate_non_empty("message", &payload.message)?;
 
     let commit = Commit::new(payload.id, payload.message);
-    state.repo.create_commit(commit.clone()).await;
+    state.repo.create_commit(commit.clone()).await?;
 
     Ok(Json(commit))
 }
