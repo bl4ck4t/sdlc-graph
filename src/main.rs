@@ -12,11 +12,11 @@ use axum::{Router, extract::State, routing::{get, post}};
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
 use tracing::Level;
 
-use crate::{api::user_handler::{create_commit, create_repository, create_user, get_commit, get_commits_by_repository, get_commits_by_user, get_repository, get_user, link_commit_to_repository, link_commit_to_user}, domain::repository::GraphRepository, infrastructure::{in_memory_repository::InMemoryGraphRepository, postgres_repository::PostgresGraphRepository}};
+use crate::{api::user_handler::{create_commit, create_repository, create_user, get_commit, get_commits_by_repository, get_commits_by_user, get_repository, get_user, link_commit_to_repository, link_commit_to_user}, application::services::graph_service::GraphService, domain::repository::GraphRepository, infrastructure::{in_memory_repository::InMemoryGraphRepository, postgres_repository::PostgresGraphRepository}};
 
 #[derive(Clone)]
 struct AppState {
-    repo: Arc<dyn GraphRepository>,
+    service: Arc<GraphService>,
     db: PgPool
 }
 
@@ -37,8 +37,9 @@ async fn main() {
         .init();
 
     let repo = Arc::new(PostgresGraphRepository::new(db.clone()));
+    let service = Arc::new(GraphService::new(repo));
 
-    let state = AppState { repo, db };
+    let state = AppState { service, db };
 
     tracing::info!("Connected to Postgres");
 

@@ -56,7 +56,7 @@ pub async fn create_user(
     validate_email(&payload.email)?;
 
     let user = User::new(payload.id, payload.username, payload.email);
-    state.repo.create_user(user.clone()).await?;
+    state.service.create_user(user.clone()).await?;
 
     Ok(Json(user))
 }
@@ -69,7 +69,7 @@ pub async fn get_user(
 
     info!("fetching user with id={}", id);
 
-    let user = state.repo.get_user(&id).await?;
+    let user = state.service.get_user(&id).await?;
     Ok(Json(user))
 }
 
@@ -84,7 +84,7 @@ pub async fn create_repository(
     validate_non_empty("name", &payload.name)?;
 
     let repo = Repository::new(payload.id, payload.name);
-    state.repo.create_repository(repo.clone()).await?;
+    state.service.create_repository(repo.clone()).await?;
 
     Ok(Json(repo))
 }
@@ -100,7 +100,7 @@ pub async fn create_commit(
     validate_non_empty("message", &payload.message)?;
 
     let commit = Commit::new(payload.id, payload.message);
-    state.repo.create_commit(commit.clone()).await?;
+    state.service.create_commit(commit.clone()).await?;
 
     Ok(Json(commit))
 }
@@ -112,7 +112,7 @@ pub async fn get_repository(
 
     info!("fetching repository with id={}", id);
 
-    let repo = state.repo.get_repository(&id).await?;
+    let repo = state.service.get_repository(&id).await?;
     Ok(Json(repo))
 }
 
@@ -123,7 +123,7 @@ pub async fn get_commit(
 
     info!("fetching commit with id={}", id);
 
-    let commit = state.repo.get_commit(&id).await?;
+    let commit = state.service.get_commit(&id).await?;
     Ok(Json(commit))
 }
 
@@ -138,7 +138,7 @@ pub async fn link_commit_to_repository(
     );
 
     state
-        .repo
+        .service
         .link_commit_to_repository(&commit_id, &repo_id)
         .await?;
 
@@ -156,7 +156,7 @@ pub async fn link_commit_to_user(
     );
 
     state
-        .repo
+        .service
         .link_commit_to_user(&commit_id, &user_id)
         .await?;
 
@@ -170,7 +170,7 @@ pub async fn get_commits_by_repository(
 
     info!("fetching commits for repo {}", repo_id);
 
-    let commits = state.repo.get_commits_by_repository(&repo_id).await?;
+    let commits = state.service.get_commits_by_repository(&repo_id).await?;
 
     Ok(Json(commits))
 }
@@ -182,7 +182,7 @@ pub async fn get_commits_by_user(
 
     info!("fetching commits for user {}", user_id);
 
-    let commits = state.repo.get_commits_by_user(&user_id).await?;
+    let commits = state.service.get_commits_by_user(&user_id).await?;
 
     Ok(Json(commits))
 }
