@@ -119,12 +119,79 @@ impl GraphRepository for PostgresGraphRepository {
         }
     }
 
-    async fn link_commit_to_repository(&self, _: &str, _: &str) -> Result<(), AppError> {
-        unimplemented!()
+    async fn link_commit_to_repository(
+        &self,
+        commit_id: &str,
+        repo_id: &str,
+    ) -> Result<(), AppError> {
+        let result =
+            sqlx::query("INSERT INTO commit_repository (commit_id, repo_id) VALUES ($1, $2)")
+                .bind(commit_id)
+                .bind(repo_id)
+                .execute(&self.pool)
+                .await;
+
+        match result {
+            Ok(_) => Ok(()),
+
+            Err(e) => {
+                if let sqlx::Error::Database(db_err) = &e {
+                    if let Some(constraint) = db_err.constraint() {
+                        if constraint.contains("commit_repository_commit_id_fkey") {
+                            return Err(AppError::CommitNotFound);
+                        }
+
+                        if constraint.contains("commit_repository_repo_id_fkey") {
+                            return Err(AppError::RepositoryNotFound);
+                        }
+
+                        if constraint.contains("commit_repository_pkey") {
+                            return Err(AppError::ValidationError(
+                                "commit already linked to repository".to_string(),
+                            ));
+                        }
+                    }
+                }
+
+                Err(AppError::InternalServerError(e.to_string()))
+            }
+        }
     }
 
-    async fn link_commit_to_user(&self, _: &str, _: &str) -> Result<(), AppError> {
-        unimplemented!()
+    async fn link_commit_to_user(&self, commit_id: &str, user_id: &str) -> Result<(), AppError> {
+        let result = sqlx::query("INSERT INTO commit_user (commit_id, user_id) VALUES ($1, $2)")
+            .bind(commit_id)
+            .bind(user_id)
+            .execute(&self.pool)
+            .await;
+
+        match result {
+            Ok(_) => Ok(()),
+
+            Err(e) => {
+                if let sqlx::Error::Database(db_err) = &e {
+                    // Foreign key violations
+                    if let Some(constraint) = db_err.constraint() {
+                        if constraint.contains("commit_user_commit_id_fkey") {
+                            return Err(AppError::CommitNotFound);
+                        }
+
+                        if constraint.contains("commit_user_user_id_fkey") {
+                            return Err(AppError::UserNotFound);
+                        }
+
+                        // Primary key violation (duplicate link)
+                        if constraint.contains("commit_user_pkey") {
+                            return Err(AppError::ValidationError(
+                                "commit already linked to user".to_string(),
+                            ));
+                        }
+                    }
+                }
+
+                Err(AppError::InternalServerError(e.to_string()))
+            }
+        }
     }
 
     async fn get_commits_by_repository(&self, _: &str) -> Result<Vec<Commit>, AppError> {
