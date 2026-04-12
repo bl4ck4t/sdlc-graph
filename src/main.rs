@@ -5,9 +5,10 @@ mod infrastructure;
 
 use std::sync::Arc;
 
+use sqlx::{PgPool, postgres::PgPoolOptions};
 use tokio::net::{TcpListener};
 
-use axum::{Router, routing::{get, post}};
+use axum::{Router, extract::State, routing::{get, post}};
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
 use tracing::Level;
 
@@ -15,11 +16,21 @@ use crate::{api::user_handler::{create_commit, create_repository, create_user, g
 
 #[derive(Clone)]
 struct AppState {
-    repo: Arc<dyn GraphRepository>
+    repo: Arc<dyn GraphRepository>,
+    db: PgPool
 }
 
 #[tokio::main]
 async fn main() {
+
+    let database_url = "postgres://postgres:toor@localhost:5432/graph_db";
+
+    let db = PgPoolOptions::new()
+    .max_connections(5)
+    .connect(database_url)
+    .await
+    .expect("Failed to connect to Postgres");
+
     tracing_subscriber::fmt()
         .with_target(false)
         .compact()
@@ -27,10 +38,13 @@ async fn main() {
 
     let repo = Arc::new(InMemoryGraphRepository::new());
 
-    let state = AppState { repo };
+    let state = AppState { repo, db };
+
+    tracing::info!("Connected to Postgres");
 
     let app = Router::new()
         .route("/", get(root))
+        .route("/health/db", get(db_health))
         
         //Users
         .route("/users", post(create_user))
@@ -89,3 +103,12 @@ async fn root() -> &'static str {
     "Hello, SDLC Graph!"
 }
 
+async fn db_health(State(state): State<AppState>) -> &'static str {
+    match sqlx::query("SELECT 1")
+        .execute(&state.db)
+        .await
+    {
+        Ok(_) => "DB OK",
+        Err(_) => "DB DOWN",
+    }
+}
