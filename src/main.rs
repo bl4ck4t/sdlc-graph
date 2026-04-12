@@ -12,7 +12,7 @@ use axum::{Router, extract::State, routing::{get, post}};
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
 use tracing::Level;
 
-use crate::{api::user_handler::{create_commit, create_repository, create_user, get_commit, get_commits_by_repository, get_commits_by_user, get_repository, get_user, link_commit_to_repository, link_commit_to_user}, domain::repository::GraphRepository, infrastructure::in_memory_repository::InMemoryGraphRepository};
+use crate::{api::user_handler::{create_commit, create_repository, create_user, get_commit, get_commits_by_repository, get_commits_by_user, get_repository, get_user, link_commit_to_repository, link_commit_to_user}, domain::repository::GraphRepository, infrastructure::{in_memory_repository::InMemoryGraphRepository, postgres_repository::PostgresGraphRepository}};
 
 #[derive(Clone)]
 struct AppState {
@@ -36,7 +36,7 @@ async fn main() {
         .compact()
         .init();
 
-    let repo = Arc::new(InMemoryGraphRepository::new());
+    let repo = Arc::new(PostgresGraphRepository::new(db.clone()));
 
     let state = AppState { repo, db };
 

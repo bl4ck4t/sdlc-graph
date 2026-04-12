@@ -23,7 +23,7 @@ pub enum AppError {
     CommitAlreadyExists,
 
     #[error("Internal Server Error")]
-    InternalServerError,
+    InternalServerError(String),
 
     #[error("Invalid input: {0}")]
     ValidationError(String),
@@ -40,7 +40,7 @@ impl IntoResponse for AppError {
             AppError::UserNotFound => StatusCode::NOT_FOUND,
             AppError::RepositoryNotFound => StatusCode::NOT_FOUND,
             AppError::CommitNotFound => StatusCode::NOT_FOUND,
-            AppError::InternalServerError => StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::InternalServerError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             AppError::UserAlreadyExists => StatusCode::CONFLICT,
             AppError::RepositoryAlreadyExists => StatusCode::CONFLICT,
             AppError::CommitAlreadyExists => StatusCode::CONFLICT,

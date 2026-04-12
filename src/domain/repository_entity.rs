@@ -1,6 +1,7 @@
 use serde::{Serialize, Deserialize};
+use sqlx::prelude::FromRow;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct  Repository {
     pub id: String,
     pub name: String
