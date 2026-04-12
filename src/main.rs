@@ -15,7 +15,7 @@ use crate::{api::user_handler::{create_commit, create_repository, create_user, g
 
 #[derive(Clone)]
 struct AppState {
-    repo: Arc<InMemoryGraphRepository>
+    repo: Arc<dyn GraphRepository>
 }
 
 #[tokio::main]
