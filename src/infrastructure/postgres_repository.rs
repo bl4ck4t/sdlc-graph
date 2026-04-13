@@ -207,76 +207,109 @@ impl GraphRepository for PostgresGraphRepository {
         &self,
         repo_id: &str,
         limit: u32,
-        offset: u32,
+        cursor: Option<String>,
     ) -> Result<Vec<Commit>, AppError> {
-        // Step 1: validate repo exists
-        let exists =
-            sqlx::query_scalar::<_, i64>("SELECT COUNT(1) FROM repositories WHERE id = $1")
-                .bind(repo_id)
-                .fetch_one(&self.pool)
-                .await
-                .map_err(|e| AppError::InternalServerError(e.to_string()))?;
+        // 1. Validate repository exists
+        let exists = sqlx::query_scalar::<_, i32>("SELECT 1 FROM repositories WHERE id = $1")
+            .bind(repo_id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| AppError::InternalServerError(e.to_string()))?;
 
-        if exists == 0 {
+        if exists.is_none() {
             return Err(AppError::RepositoryNotFound);
         }
 
-        // Step 2: fetch commits
-        let commits = sqlx::query_as::<_, Commit>(
-            r#"
-        SELECT c.id, c.message
-        FROM commits c
-        JOIN commit_repository cr ON c.id = cr.commit_id
-        WHERE cr.repo_id = $1
-        ORDER BY cr.commit_id
-        LIMIT $2 OFFSET $3
-        "#,
-        )
-        .bind(repo_id)
-        .bind(limit as i64)
-        .bind(offset as i64)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| AppError::InternalServerError(e.to_string()))?;
+        // 2. Query with cursor support
+        let commits = if let Some(cursor) = cursor {
+            sqlx::query_as::<_, Commit>(
+                r#"
+            SELECT c.id, c.message
+            FROM commit_repository cr
+            JOIN commits c ON c.id = cr.commit_id
+            WHERE cr.repo_id = $1
+              AND cr.commit_id > $2
+            ORDER BY cr.commit_id
+            LIMIT $3
+            "#,
+            )
+            .bind(repo_id)
+            .bind(cursor)
+            .bind(limit as i32)
+            .fetch_all(&self.pool)
+            .await
+        } else {
+            sqlx::query_as::<_, Commit>(
+                r#"
+            SELECT c.id, c.message
+            FROM commit_repository cr
+            JOIN commits c ON c.id = cr.commit_id
+            WHERE cr.repo_id = $1
+            ORDER BY cr.commit_id
+            LIMIT $2
+            "#,
+            )
+            .bind(repo_id)
+            .bind(limit as i32)
+            .fetch_all(&self.pool)
+            .await
+        };
 
-        Ok(commits)
+        commits.map_err(|e| AppError::InternalServerError(e.to_string()))
     }
 
     async fn get_commits_by_user(
         &self,
         user_id: &str,
         limit: u32,
-        offset: u32,
+        cursor: Option<String>,
     ) -> Result<Vec<Commit>, AppError> {
-        // Step 1: validate user exists
-        let exists = sqlx::query_scalar::<_, i64>("SELECT COUNT(1) FROM users WHERE id = $1")
+        // 1. Validate user exists
+        let exists = sqlx::query_scalar::<_, i32>("SELECT 1 FROM users WHERE id = $1")
             .bind(user_id)
-            .fetch_one(&self.pool)
+            .fetch_optional(&self.pool)
             .await
             .map_err(|e| AppError::InternalServerError(e.to_string()))?;
 
-        if exists == 0 {
+        if exists.is_none() {
             return Err(AppError::UserNotFound);
         }
 
-        // Step 2: fetch commits
-        let commits = sqlx::query_as::<_, Commit>(
-            r#"
-        SELECT c.id, c.message
-        FROM commits c
-        JOIN commit_user cu ON c.id = cu.commit_id
-        WHERE cu.user_id = $1
-        ORDER BY cu.commit_id
-        LIMIT $2 OFFSET $3
-        "#,
-        )
-        .bind(user_id)
-        .bind(limit as i64)
-        .bind(offset as i64)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| AppError::InternalServerError(e.to_string()))?;
+        // 2. Build query dynamically (cleaner than duplication)
+        let commits = if let Some(cursor) = cursor {
+            sqlx::query_as::<_, Commit>(
+                r#"
+            SELECT c.id, c.message
+            FROM commit_user cu
+            JOIN commits c ON c.id = cu.commit_id
+            WHERE cu.user_id = $1
+              AND cu.commit_id > $2
+            ORDER BY cu.commit_id
+            LIMIT $3
+            "#,
+            )
+            .bind(user_id)
+            .bind(cursor)
+            .bind(limit as i32)
+            .fetch_all(&self.pool)
+            .await
+        } else {
+            sqlx::query_as::<_, Commit>(
+                r#"
+            SELECT c.id, c.message
+            FROM commit_user cu
+            JOIN commits c ON c.id = cu.commit_id
+            WHERE cu.user_id = $1
+            ORDER BY cu.commit_id
+            LIMIT $2
+            "#,
+            )
+            .bind(user_id)
+            .bind(limit as i32)
+            .fetch_all(&self.pool)
+            .await
+        };
 
-        Ok(commits)
+        commits.map_err(|e| AppError::InternalServerError(e.to_string()))
     }
 }

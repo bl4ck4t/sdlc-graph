@@ -69,17 +69,17 @@ impl GraphService {
         &self,
         user_id: &str,
         limit: u32,
-        offset: u32
+        cursor: Option<String>
     ) -> Result<Vec<Commit>, AppError> {
-        self.repo.get_commits_by_user(user_id, limit, offset).await
+        self.repo.get_commits_by_user(user_id, limit, cursor).await
     }
 
     pub async fn get_commits_by_repository(
         &self,
         repo_id: &str,
         limit: u32,
-        offset: u32
+        cursor: Option<String>
     ) -> Result<Vec<Commit>, AppError> {
-        self.repo.get_commits_by_repository(repo_id, limit, offset).await
+        self.repo.get_commits_by_repository(repo_id, limit, cursor).await
     }
 }

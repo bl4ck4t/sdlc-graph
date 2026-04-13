@@ -1,8 +1,8 @@
-use axum::{Json, extract::{Path, Query, State}, http::StatusCode};
+use axum::{Json, extract::{Path, Query, State}};
 use serde::Deserialize;
 use tracing::{info, instrument};
 
-use crate::{AppState, api::error::AppError, domain::{User, commit::Commit, repository::GraphRepository, repository_entity::Repository}};
+use crate::{AppState, api::error::AppError, domain::{User, commit::Commit, repository_entity::Repository}};
 
 #[derive(Debug, Deserialize)]
 pub struct CreateUserRequest {
@@ -24,9 +24,9 @@ pub struct CreateCommitRequest {
 }
 
 #[derive(Deserialize)]
-pub struct Pagination {
+pub struct CursorPagination {
     pub limit: Option<u32>,
-    pub offset: Option<u32>,
+    pub cursor: Option<String>,
 }
 
 fn validate_non_empty(field: &str, value: &str) -> Result<(), AppError> {
@@ -181,15 +181,15 @@ pub async fn link_commit_to_user(
 pub async fn get_commits_by_repository(
     State(state) : State<AppState>,
     Path(repo_id): Path<String>,
-    Query(pagination): Query<Pagination>
+    Query(pagination): Query<CursorPagination>
 ) -> Result<Json<Vec<Commit>>, AppError> {
 
     let limit = pagination.limit.unwrap_or(10).min(100);
-    let offset = pagination.offset.unwrap_or(0);
+    let cursor = pagination.cursor;
 
     info!("fetching commits for repo {}", repo_id);
 
-    let commits = state.service.get_commits_by_repository(&repo_id, limit, offset).await?;
+    let commits = state.service.get_commits_by_repository(&repo_id, limit, cursor).await?;
 
     Ok(Json(commits))
 }
@@ -197,15 +197,15 @@ pub async fn get_commits_by_repository(
 pub async fn get_commits_by_user(
     State(state) : State<AppState>,
     Path(user_id): Path<String>,
-    Query(pagination): Query<Pagination>
+    Query(pagination): Query<CursorPagination>
 ) -> Result<Json<Vec<Commit>>, AppError> {
 
     let limit = pagination.limit.unwrap_or(10).min(100);
-    let offset = pagination.offset.unwrap_or(0);
+    let cursor = pagination.cursor;
 
     info!("fetching commits for user {}", user_id);
 
-    let commits = state.service.get_commits_by_user(&user_id, limit, offset).await?;
+    let commits = state.service.get_commits_by_user(&user_id, limit, cursor).await?;
 
     Ok(Json(commits))
 }
