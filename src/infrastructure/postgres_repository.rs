@@ -17,9 +17,10 @@ impl PostgresGraphRepository {
 
 #[async_trait::async_trait]
 impl GraphRepository for PostgresGraphRepository {
-
     async fn db_health(&self) -> Result<(), AppError> {
-        sqlx::query("SELECT 1").execute(&self.pool).await
+        sqlx::query("SELECT 1")
+            .execute(&self.pool)
+            .await
             .map_err(|e| AppError::InternalServerError(e.to_string()))?;
 
         Ok(())
@@ -202,7 +203,12 @@ impl GraphRepository for PostgresGraphRepository {
         }
     }
 
-    async fn get_commits_by_repository(&self, repo_id: &str, limit: u32, offset: u32) -> Result<Vec<Commit>, AppError> {
+    async fn get_commits_by_repository(
+        &self,
+        repo_id: &str,
+        limit: u32,
+        offset: u32,
+    ) -> Result<Vec<Commit>, AppError> {
         // Step 1: validate repo exists
         let exists =
             sqlx::query_scalar::<_, i64>("SELECT COUNT(1) FROM repositories WHERE id = $1")
@@ -222,7 +228,7 @@ impl GraphRepository for PostgresGraphRepository {
         FROM commits c
         JOIN commit_repository cr ON c.id = cr.commit_id
         WHERE cr.repo_id = $1
-        ORDER BY c.id
+        ORDER BY cr.commit_id
         LIMIT $2 OFFSET $3
         "#,
         )
@@ -236,7 +242,12 @@ impl GraphRepository for PostgresGraphRepository {
         Ok(commits)
     }
 
-    async fn get_commits_by_user(&self, user_id: &str, limit: u32, offset: u32) -> Result<Vec<Commit>, AppError> {
+    async fn get_commits_by_user(
+        &self,
+        user_id: &str,
+        limit: u32,
+        offset: u32,
+    ) -> Result<Vec<Commit>, AppError> {
         // Step 1: validate user exists
         let exists = sqlx::query_scalar::<_, i64>("SELECT COUNT(1) FROM users WHERE id = $1")
             .bind(user_id)
@@ -255,7 +266,7 @@ impl GraphRepository for PostgresGraphRepository {
         FROM commits c
         JOIN commit_user cu ON c.id = cu.commit_id
         WHERE cu.user_id = $1
-        ORDER BY c.id
+        ORDER BY cu.commit_id
         LIMIT $2 OFFSET $3
         "#,
         )

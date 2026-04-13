@@ -155,7 +155,7 @@ impl GraphRepository for InMemoryGraphRepository {
         Ok(result)
     }
 
-    async fn get_commits_by_user(&self, user_id: &str, limit: u32, offset: u32) -> Result<Vec<Commit>, AppError> {
+    async fn get_commits_by_user(&self, user_id: &str, _limit: u32, _offset: u32) -> Result<Vec<Commit>, AppError> {
 
         let users = self.users.read().await;
         if !users.contains_key(user_id) {
