@@ -17,6 +17,14 @@ impl PostgresGraphRepository {
 
 #[async_trait::async_trait]
 impl GraphRepository for PostgresGraphRepository {
+
+    async fn db_health(&self) -> Result<(), AppError> {
+        sqlx::query("SELECT 1").execute(&self.pool).await
+            .map_err(|e| AppError::InternalServerError(e.to_string()))?;
+
+        Ok(())
+    }
+
     async fn create_user(&self, user: User) -> Result<(), AppError> {
         let result = sqlx::query("INSERT INTO users (id, username, email) VALUES ($1, $2, $3)")
             .bind(&user.id)

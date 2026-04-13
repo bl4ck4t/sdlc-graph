@@ -1,4 +1,4 @@
-use axum::{Json, extract::{Path, State}};
+use axum::{Json, extract::{Path, State}, http::StatusCode};
 use serde::Deserialize;
 use tracing::{info, instrument};
 
@@ -40,6 +40,15 @@ fn validate_email(email: &str) -> Result<(), AppError> {
         ));
     }
     Ok(())
+}
+
+pub async fn db_health(
+    State(state) : State<AppState>
+) -> &'static str {
+    match state.service.db_health().await {
+        Ok(_) => "DB_OK",
+        Err(_) => "DB_DOWN",
+    }
 }
 
 #[instrument(skip(state))]

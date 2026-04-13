@@ -2,6 +2,8 @@ use crate::{api::error::AppError, domain::{User, commit::Commit, repository_enti
 
 #[async_trait::async_trait]
 pub trait GraphRepository: Send + Sync {
+    async fn db_health(&self) -> Result<(), AppError>;
+
     async fn create_user(&self, user: User) -> Result<(), AppError>;
     async fn get_user(&self, id: &str) -> Result<User, AppError>;
 

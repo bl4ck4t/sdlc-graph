@@ -31,6 +31,13 @@ impl InMemoryGraphRepository {
 
 #[async_trait::async_trait]
 impl GraphRepository for InMemoryGraphRepository {
+
+    async fn db_health(&self) -> Result<(), AppError> {
+        let _ = self.users.read().await;
+        tracing::info!("In-memory database health check: OK");
+        Ok(())
+    }
+
     async fn create_user(&self, user: User) -> Result<(), AppError> {
         let mut users = self.users.write().await;
         

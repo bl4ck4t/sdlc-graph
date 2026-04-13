@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use axum::http::StatusCode;
+
 use crate::{
     api::error::AppError,
     domain::{User, commit::Commit, repository::GraphRepository, repository_entity::Repository},
@@ -12,6 +14,10 @@ pub struct GraphService {
 impl GraphService {
     pub fn new(repo: Arc<dyn GraphRepository>) -> Self {
         Self { repo }
+    }
+
+    pub async fn db_health(&self) -> Result<(), AppError> {
+        self.repo.db_health().await
     }
 
     pub async fn create_user(&self, user: User) -> Result<User, AppError> {
