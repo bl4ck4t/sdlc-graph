@@ -15,6 +15,6 @@ pub trait GraphRepository: Send + Sync {
 
     async fn link_commit_to_repository(&self, commit_id: &str, repo_id: &str) -> Result<(), AppError>;
     async fn link_commit_to_user(&self, commit_id: &str, user_id: &str) -> Result<(), AppError>;
-    async fn get_commits_by_repository(&self, repo_id: &str) -> Result<Vec<Commit>, AppError>;
-    async fn get_commits_by_user(&self, user_id: &str) -> Result<Vec<Commit>, AppError>;
+    async fn get_commits_by_repository(&self, repo_id: &str, limit: u32, offset: u32) -> Result<Vec<Commit>, AppError>;
+    async fn get_commits_by_user(&self, user_id: &str, limit: u32, offset: u32) -> Result<Vec<Commit>, AppError>;
 }

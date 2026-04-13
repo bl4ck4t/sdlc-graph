@@ -65,11 +65,21 @@ impl GraphService {
             .await
     }
 
-    pub async fn get_commits_by_user(&self, user_id: &str) -> Result<Vec<Commit>, AppError> {
-        self.repo.get_commits_by_user(user_id).await
+    pub async fn get_commits_by_user(
+        &self,
+        user_id: &str,
+        limit: u32,
+        offset: u32
+    ) -> Result<Vec<Commit>, AppError> {
+        self.repo.get_commits_by_user(user_id, limit, offset).await
     }
 
-    pub async fn get_commits_by_repository(&self, repo_id: &str) -> Result<Vec<Commit>, AppError> {
-        self.repo.get_commits_by_repository(repo_id).await
+    pub async fn get_commits_by_repository(
+        &self,
+        repo_id: &str,
+        limit: u32,
+        offset: u32
+    ) -> Result<Vec<Commit>, AppError> {
+        self.repo.get_commits_by_repository(repo_id, limit, offset).await
     }
 }
