@@ -2,12 +2,14 @@ use axum::{
     Json,
     extract::{Path, Query, State},
 };
+use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use tracing::{info, instrument};
 
 use crate::{
     AppState,
     api::error::AppError,
+    api::utils::date_parser::deserialize_optional_datetime,
     domain::{User, commit::Commit, repository_entity::Repository},
 };
 
@@ -28,6 +30,18 @@ pub struct CreateRepositoryRequest {
 pub struct CreateCommitRequest {
     pub id: String,
     pub message: String,
+}
+
+#[derive(Deserialize)]
+pub struct CommitQuery {
+    pub limit: Option<u32>,
+    pub cursor: Option<String>,
+
+    #[serde(default, deserialize_with = "deserialize_optional_datetime")]
+    pub from: Option<DateTime<Utc>>,
+
+    #[serde(default, deserialize_with = "deserialize_optional_datetime")]
+    pub to: Option<DateTime<Utc>>,
 }
 
 #[derive(Deserialize)]
@@ -189,16 +203,19 @@ pub async fn get_commits_by_repository(
 pub async fn get_commits_by_user(
     State(state): State<AppState>,
     Path(user_id): Path<String>,
-    Query(pagination): Query<CursorPagination>,
+    Query(query): Query<CommitQuery>,
 ) -> Result<Json<Vec<Commit>>, AppError> {
-    let limit = pagination.limit.unwrap_or(10).min(100);
-    let cursor = pagination.cursor;
-
-    info!("fetching commits for user {}", user_id);
+    let limit = query.limit.unwrap_or(10);
 
     let commits = state
         .service
-        .get_commits_by_user(&user_id, limit, cursor)
+        .get_commits_by_user(
+            &user_id,
+            limit,
+            query.cursor,
+            query.from,
+            query.to,
+        )
         .await?;
 
     Ok(Json(commits))

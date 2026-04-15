@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use chrono::{DateTime, Utc};
 use tokio::sync::RwLock;
 
 use crate::api::error::AppError;
@@ -155,7 +156,7 @@ impl GraphRepository for InMemoryGraphRepository {
         Ok(result)
     }
 
-    async fn get_commits_by_user(&self, user_id: &str, _limit: u32, _cursor: Option<String>) -> Result<Vec<Commit>, AppError> {
+    async fn get_commits_by_user(&self, user_id: &str, _limit: u32, _cursor: Option<String>, _from: Option<DateTime<Utc>>, _to: Option<DateTime<Utc>>) -> Result<Vec<Commit>, AppError> {
 
         let users = self.users.read().await;
         if !users.contains_key(user_id) {

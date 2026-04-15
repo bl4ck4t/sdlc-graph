@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use axum::http::StatusCode;
+use chrono::{DateTime, Utc};
 
 use crate::{
     api::error::AppError,
@@ -70,8 +71,12 @@ impl GraphService {
         user_id: &str,
         limit: u32,
         cursor: Option<String>,
+        from: Option<DateTime<Utc>>,
+        to: Option<DateTime<Utc>>,
     ) -> Result<Vec<Commit>, AppError> {
-        self.repo.get_commits_by_user(user_id, limit, cursor).await
+        self.repo
+            .get_commits_by_user(user_id, limit, cursor, from, to)
+            .await
     }
 
     pub async fn get_commits_by_repository(

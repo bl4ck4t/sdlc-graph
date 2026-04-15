@@ -1,3 +1,5 @@
+use chrono::{DateTime, Utc};
+
 use crate::{api::error::AppError, domain::{User, commit::Commit, repository_entity::Repository}};
 
 #[async_trait::async_trait]
@@ -17,7 +19,7 @@ pub trait GraphRepository: Send + Sync {
     async fn link_commit_to_user(&self, commit_id: &str, user_id: &str) -> Result<(), AppError>;
 
     async fn get_commits_by_repository(&self, repo_id: &str, limit: u32, cursor: Option<String>) -> Result<Vec<Commit>, AppError>;
-    async fn get_commits_by_user(&self, user_id: &str, limit: u32, cursor: Option<String>) -> Result<Vec<Commit>, AppError>;
+    async fn get_commits_by_user(&self, user_id: &str, limit: u32, cursor: Option<String>, from: Option<DateTime<Utc>>, to: Option<DateTime<Utc>>) -> Result<Vec<Commit>, AppError>;
 
     async fn get_repositories_by_user(&self, user_id: &str, limit: u32, cursor: Option<String>) -> Result<Vec<Repository>, AppError>;
 }

@@ -1,5 +1,6 @@
 use std::time::Instant;
 
+use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 
 use crate::{
@@ -338,59 +339,76 @@ impl GraphRepository for PostgresGraphRepository {
         user_id: &str,
         limit: u32,
         cursor: Option<String>,
+        from: Option<DateTime<Utc>>,
+        to: Option<DateTime<Utc>>,
     ) -> Result<Vec<Commit>, AppError> {
+        use crate::infrastructure::metrics::{record_db_error, record_db_query};
+        use std::time::Instant;
+
         let start = Instant::now();
 
-        // 1. Validate user exists
-        let exists =
-            sqlx::query_scalar::<_, bool>("SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)")
-                .bind(user_id)
-                .fetch_one(&self.pool)
-                .await
-                .map_err(|e| {
-                    record_db_error("user_exists_check");
-                    AppError::InternalServerError(e.to_string())
-                })?;
+        // Validate user exists
+        let exists = sqlx::query_scalar::<_, i32>("SELECT 1 FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_optional(&self.pool)
+            .await;
 
-        if !exists {
+        if let Err(e) = exists {
+            record_db_error("get_commits_by_user");
+            return Err(AppError::InternalServerError(e.to_string()));
+        }
+
+        if exists.unwrap().is_none() {
             return Err(AppError::UserNotFound);
         }
 
-        // 2. Fetch commits
-        let result = if let Some(cursor) = cursor {
-            sqlx::query_as::<_, Commit>(
-                r#"
-                SELECT c.id, c.message
-                FROM commit_user cu
-                JOIN commits c ON c.id = cu.commit_id
-                WHERE cu.user_id = $1 AND cu.commit_id > $2
-                ORDER BY cu.commit_id ASC
-                LIMIT $3
-                "#,
-            )
-            .bind(user_id)
-            .bind(cursor)
-            .bind(limit as i32)
-            .fetch_all(&self.pool)
-            .await
-        } else {
-            sqlx::query_as::<_, Commit>(
-                r#"
-                SELECT c.id, c.message
-                FROM commit_user cu
-                JOIN commits c ON c.id = cu.commit_id
-                WHERE cu.user_id = $1
-                ORDER BY cu.commit_id ASC
-                LIMIT $2
-                "#,
-            )
-            .bind(user_id)
-            .bind(limit as i32)
-            .fetch_all(&self.pool)
-            .await
-        };
+        // Build query dynamically
+        let mut query = String::from(
+            r#"
+        SELECT c.id, c.message
+        FROM commit_user cu
+        JOIN commits c ON c.id = cu.commit_id
+        WHERE cu.user_id = $1
+        "#,
+        );
 
-        // 3. Metric Recording
+        let mut bind_index = 2;
+
+        if cursor.is_some() {
+            query.push_str(&format!(" AND cu.commit_id > ${}", bind_index));
+            bind_index += 1;
+        }
+
+        if from.is_some() {
+            query.push_str(&format!(" AND c.created_at >= ${}", bind_index));
+            bind_index += 1;
+        }
+
+        if to.is_some() {
+            query.push_str(&format!(" AND c.created_at <= ${}", bind_index));
+            bind_index += 1;
+        }
+
+        query.push_str(&format!(" ORDER BY cu.commit_id LIMIT ${}", bind_index));
+
+        let mut q = sqlx::query_as::<_, Commit>(&query).bind(user_id);
+
+        if let Some(cursor) = cursor {
+            q = q.bind(cursor);
+        }
+
+        if let Some(from) = from {
+            q = q.bind(from);
+        }
+
+        if let Some(to) = to {
+            q = q.bind(to);
+        }
+
+        q = q.bind(limit as i32);
+
+        let result = q.fetch_all(&self.pool).await;
+
         match result {
             Ok(commits) => {
                 record_db_query("get_commits_by_user", start);
