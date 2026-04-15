@@ -1,26 +1,33 @@
-use axum::{Json, extract::{Path, Query, State}};
+use axum::{
+    Json,
+    extract::{Path, Query, State},
+};
 use serde::Deserialize;
 use tracing::{info, instrument};
 
-use crate::{AppState, api::error::AppError, domain::{User, commit::Commit, repository_entity::Repository}};
+use crate::{
+    AppState,
+    api::error::AppError,
+    domain::{User, commit::Commit, repository_entity::Repository},
+};
 
 #[derive(Debug, Deserialize)]
 pub struct CreateUserRequest {
     id: String,
     username: String,
-    email: String
+    email: String,
 }
 
 #[derive(Deserialize)]
 pub struct CreateRepositoryRequest {
     pub id: String,
-    pub name: String
+    pub name: String,
 }
 
 #[derive(Deserialize)]
 pub struct CreateCommitRequest {
     pub id: String,
-    pub message: String
+    pub message: String,
 }
 
 #[derive(Deserialize)]
@@ -48,9 +55,7 @@ fn validate_email(email: &str) -> Result<(), AppError> {
     Ok(())
 }
 
-pub async fn db_health(
-    State(state) : State<AppState>
-) -> &'static str {
+pub async fn db_health(State(state): State<AppState>) -> &'static str {
     match state.service.db_health().await {
         Ok(_) => "DB_OK",
         Err(_) => "DB_DOWN",
@@ -59,10 +64,9 @@ pub async fn db_health(
 
 #[instrument(skip(state))]
 pub async fn create_user(
-    State(state) : State<AppState>,
-    Json(payload): Json<CreateUserRequest>
+    State(state): State<AppState>,
+    Json(payload): Json<CreateUserRequest>,
 ) -> Result<Json<User>, AppError> {
-
     info!("creating user with id={}", payload.id);
 
     validate_non_empty("id", &payload.id)?;
@@ -76,12 +80,10 @@ pub async fn create_user(
     Ok(Json(user))
 }
 
-
 pub async fn get_user(
     State(state): State<AppState>,
-    Path(id): Path<String>
+    Path(id): Path<String>,
 ) -> Result<Json<User>, AppError> {
-
     info!("fetching user with id={}", id);
 
     let user = state.service.get_user(&id).await?;
@@ -89,10 +91,9 @@ pub async fn get_user(
 }
 
 pub async fn create_repository(
-    State(state) : State<AppState>,
-    Json(payload): Json<CreateRepositoryRequest>
+    State(state): State<AppState>,
+    Json(payload): Json<CreateRepositoryRequest>,
 ) -> Result<Json<Repository>, AppError> {
-
     info!("creating repository with id={}", payload.id);
 
     validate_non_empty("id", &payload.id)?;
@@ -105,10 +106,9 @@ pub async fn create_repository(
 }
 
 pub async fn create_commit(
-    State(state) : State<AppState>,
-    Json(payload): Json<CreateCommitRequest>
+    State(state): State<AppState>,
+    Json(payload): Json<CreateCommitRequest>,
 ) -> Result<Json<Commit>, AppError> {
-
     info!("creating commit with id={}", payload.id);
 
     validate_non_empty("id", &payload.id)?;
@@ -121,10 +121,9 @@ pub async fn create_commit(
 }
 
 pub async fn get_repository(
-    State(state) : State<AppState>,
-    Path(id): Path<String>
+    State(state): State<AppState>,
+    Path(id): Path<String>,
 ) -> Result<Json<Repository>, AppError> {
-
     info!("fetching repository with id={}", id);
 
     let repo = state.service.get_repository(&id).await?;
@@ -132,10 +131,9 @@ pub async fn get_repository(
 }
 
 pub async fn get_commit(
-    State(state) : State<AppState>,
-    Path(id): Path<String>
+    State(state): State<AppState>,
+    Path(id): Path<String>,
 ) -> Result<Json<Commit>, AppError> {
-
     info!("fetching commit with id={}", id);
 
     let commit = state.service.get_commit(&id).await?;
@@ -143,14 +141,10 @@ pub async fn get_commit(
 }
 
 pub async fn link_commit_to_repository(
-    State(state) : State<AppState>,
-    Path((commit_id, repo_id)): Path<(String, String)>
+    State(state): State<AppState>,
+    Path((commit_id, repo_id)): Path<(String, String)>,
 ) -> Result<&'static str, AppError> {
-
-    info!(
-        "linking commit {} to repository {}",
-        commit_id, repo_id
-    );
+    info!("linking commit {} to repository {}", commit_id, repo_id);
 
     state
         .service
@@ -161,14 +155,10 @@ pub async fn link_commit_to_repository(
 }
 
 pub async fn link_commit_to_user(
-    State(state) : State<AppState>,
-    Path((commit_id, user_id)): Path<(String, String)>
+    State(state): State<AppState>,
+    Path((commit_id, user_id)): Path<(String, String)>,
 ) -> Result<&'static str, AppError> {
-
-    info!(
-        "linking commit {} to user {}",
-        commit_id, user_id
-    );
+    info!("linking commit {} to user {}", commit_id, user_id);
 
     state
         .service
@@ -179,33 +169,52 @@ pub async fn link_commit_to_user(
 }
 
 pub async fn get_commits_by_repository(
-    State(state) : State<AppState>,
+    State(state): State<AppState>,
     Path(repo_id): Path<String>,
-    Query(pagination): Query<CursorPagination>
+    Query(pagination): Query<CursorPagination>,
 ) -> Result<Json<Vec<Commit>>, AppError> {
-
     let limit = pagination.limit.unwrap_or(10).min(100);
     let cursor = pagination.cursor;
 
     info!("fetching commits for repo {}", repo_id);
 
-    let commits = state.service.get_commits_by_repository(&repo_id, limit, cursor).await?;
+    let commits = state
+        .service
+        .get_commits_by_repository(&repo_id, limit, cursor)
+        .await?;
 
     Ok(Json(commits))
 }
 
 pub async fn get_commits_by_user(
-    State(state) : State<AppState>,
+    State(state): State<AppState>,
     Path(user_id): Path<String>,
-    Query(pagination): Query<CursorPagination>
+    Query(pagination): Query<CursorPagination>,
 ) -> Result<Json<Vec<Commit>>, AppError> {
-
     let limit = pagination.limit.unwrap_or(10).min(100);
     let cursor = pagination.cursor;
 
     info!("fetching commits for user {}", user_id);
 
-    let commits = state.service.get_commits_by_user(&user_id, limit, cursor).await?;
+    let commits = state
+        .service
+        .get_commits_by_user(&user_id, limit, cursor)
+        .await?;
 
     Ok(Json(commits))
+}
+
+pub async fn get_user_repositories(
+    State(state): State<AppState>,
+    Path(user_id): Path<String>,
+    Query(pagination): Query<CursorPagination>,
+) -> Result<Json<Vec<Repository>>, AppError> {
+    let limit = pagination.limit.unwrap_or(10);
+
+    let repos = state
+        .service
+        .get_repositories_by_user(&user_id, limit, pagination.cursor)
+        .await?;
+
+    Ok(Json(repos))
 }

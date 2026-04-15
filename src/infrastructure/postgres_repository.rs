@@ -260,7 +260,7 @@ impl GraphRepository for PostgresGraphRepository {
         }
     }
 
-async fn get_commits_by_repository(
+    async fn get_commits_by_repository(
         &self,
         repo_id: &str,
         limit: u32,
@@ -268,17 +268,19 @@ async fn get_commits_by_repository(
     ) -> Result<Vec<Commit>, AppError> {
         let start = Instant::now();
 
-        // 1. Validate repository exists 
-        // We record this as a "query" because the DB successfully answered us, 
+        // 1. Validate repository exists
+        // We record this as a "query" because the DB successfully answered us,
         // even if it says the repo doesn't exist.
-        let exists = sqlx::query_scalar::<_, bool>("SELECT EXISTS(SELECT 1 FROM repositories WHERE id = $1)")
-            .bind(repo_id)
-            .fetch_one(&self.pool)
-            .await
-            .map_err(|e| {
-                record_db_error("repo_exists_check");
-                AppError::InternalServerError(e.to_string())
-            })?;
+        let exists = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM repositories WHERE id = $1)",
+        )
+        .bind(repo_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| {
+            record_db_error("repo_exists_check");
+            AppError::InternalServerError(e.to_string())
+        })?;
 
         if !exists {
             return Err(AppError::RepositoryNotFound);
@@ -296,8 +298,11 @@ async fn get_commits_by_repository(
                 LIMIT $3
                 "#,
             )
-            .bind(repo_id).bind(cursor).bind(limit as i32)
-            .fetch_all(&self.pool).await
+            .bind(repo_id)
+            .bind(cursor)
+            .bind(limit as i32)
+            .fetch_all(&self.pool)
+            .await
         } else {
             sqlx::query_as::<_, Commit>(
                 r#"
@@ -309,8 +314,10 @@ async fn get_commits_by_repository(
                 LIMIT $2
                 "#,
             )
-            .bind(repo_id).bind(limit as i32)
-            .fetch_all(&self.pool).await
+            .bind(repo_id)
+            .bind(limit as i32)
+            .fetch_all(&self.pool)
+            .await
         };
 
         // 3. Final Metric Recording (The "Match" Pattern)
@@ -335,14 +342,15 @@ async fn get_commits_by_repository(
         let start = Instant::now();
 
         // 1. Validate user exists
-        let exists = sqlx::query_scalar::<_, bool>("SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)")
-            .bind(user_id)
-            .fetch_one(&self.pool)
-            .await
-            .map_err(|e| {
-                record_db_error("user_exists_check");
-                AppError::InternalServerError(e.to_string())
-            })?;
+        let exists =
+            sqlx::query_scalar::<_, bool>("SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)")
+                .bind(user_id)
+                .fetch_one(&self.pool)
+                .await
+                .map_err(|e| {
+                    record_db_error("user_exists_check");
+                    AppError::InternalServerError(e.to_string())
+                })?;
 
         if !exists {
             return Err(AppError::UserNotFound);
@@ -360,8 +368,11 @@ async fn get_commits_by_repository(
                 LIMIT $3
                 "#,
             )
-            .bind(user_id).bind(cursor).bind(limit as i32)
-            .fetch_all(&self.pool).await
+            .bind(user_id)
+            .bind(cursor)
+            .bind(limit as i32)
+            .fetch_all(&self.pool)
+            .await
         } else {
             sqlx::query_as::<_, Commit>(
                 r#"
@@ -373,8 +384,10 @@ async fn get_commits_by_repository(
                 LIMIT $2
                 "#,
             )
-            .bind(user_id).bind(limit as i32)
-            .fetch_all(&self.pool).await
+            .bind(user_id)
+            .bind(limit as i32)
+            .fetch_all(&self.pool)
+            .await
         };
 
         // 3. Metric Recording
@@ -385,6 +398,82 @@ async fn get_commits_by_repository(
             }
             Err(e) => {
                 record_db_error("get_commits_by_user");
+                Err(AppError::InternalServerError(e.to_string()))
+            }
+        }
+    }
+
+    async fn get_repositories_by_user(
+        &self,
+        user_id: &str,
+        limit: u32,
+        cursor: Option<String>,
+    ) -> Result<Vec<Repository>, AppError> {
+        use crate::infrastructure::metrics::{record_db_error, record_db_query};
+        use std::time::Instant;
+
+        let start = Instant::now();
+
+        // Validate user exists
+        let exists = sqlx::query_scalar::<_, i32>("SELECT 1 FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_optional(&self.pool)
+            .await;
+
+        if let Err(e) = exists {
+            record_db_error("get_repositories_by_user");
+            return Err(AppError::InternalServerError(e.to_string()));
+        }
+
+        if exists.unwrap().is_none() {
+            return Err(AppError::UserNotFound);
+        }
+
+        let result = if let Some(cursor) = cursor {
+            sqlx::query_as::<_, Repository>(
+                r#"
+            SELECT DISTINCT r.id, r.name
+            FROM commit_user cu
+            JOIN commits c ON c.id = cu.commit_id
+            JOIN commit_repository cr ON cr.commit_id = c.id
+            JOIN repositories r ON r.id = cr.repo_id
+            WHERE cu.user_id = $1
+              AND r.id > $2
+            ORDER BY r.id
+            LIMIT $3
+            "#,
+            )
+            .bind(user_id)
+            .bind(cursor)
+            .bind(limit as i32)
+            .fetch_all(&self.pool)
+            .await
+        } else {
+            sqlx::query_as::<_, Repository>(
+                r#"
+            SELECT DISTINCT r.id, r.name
+            FROM commit_user cu
+            JOIN commits c ON c.id = cu.commit_id
+            JOIN commit_repository cr ON cr.commit_id = c.id
+            JOIN repositories r ON r.id = cr.repo_id
+            WHERE cu.user_id = $1
+            ORDER BY r.id
+            LIMIT $2
+            "#,
+            )
+            .bind(user_id)
+            .bind(limit as i32)
+            .fetch_all(&self.pool)
+            .await
+        };
+
+        match result {
+            Ok(repos) => {
+                record_db_query("get_repositories_by_user", start);
+                Ok(repos)
+            }
+            Err(e) => {
+                record_db_error("get_repositories_by_user");
                 Err(AppError::InternalServerError(e.to_string()))
             }
         }

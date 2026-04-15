@@ -3,7 +3,7 @@ mod application;
 mod domain;
 mod infrastructure;
 
-use std::sync::Arc;
+use std::{sync::Arc};
 
 use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
 use sqlx::postgres::PgPoolOptions;
@@ -17,9 +17,7 @@ use tracing::Level;
 
 use crate::{
     api::user_handler::{
-        create_commit, create_repository, create_user, db_health, get_commit,
-        get_commits_by_repository, get_commits_by_user, get_repository, get_user,
-        link_commit_to_repository, link_commit_to_user,
+        create_commit, create_repository, create_user, db_health, get_commit, get_commits_by_repository, get_commits_by_user, get_repository, get_user, get_user_repositories, link_commit_to_repository, link_commit_to_user
     },
     application::services::graph_service::GraphService,
     domain::repository::GraphRepository,
@@ -36,11 +34,13 @@ struct AppState {
 
 #[tokio::main]
 async fn main() {
-    let database_url = "postgres://postgres:toor@localhost:5432/graph_db";
+    dotenvy::dotenv().ok();
+
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set in .env");
 
     let db = PgPoolOptions::new()
         .max_connections(5)
-        .connect(database_url)
+        .connect(&database_url)
         .await
         .expect("Failed to connect to Postgres");
 
@@ -72,6 +72,7 @@ async fn main() {
         .route("/users", post(create_user))
         .route("/users/:id", get(get_user))
         .route("/users/:id/commits", get(get_commits_by_user))
+        .route("/users/:id/repos", get(get_user_repositories))
         //Repositories
         .route("/repos", post(create_repository))
         .route("/repos/:id", get(get_repository))

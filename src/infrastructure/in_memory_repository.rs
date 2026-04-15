@@ -174,4 +174,67 @@ impl GraphRepository for InMemoryGraphRepository {
 
         Ok(result)
     }
+
+    async fn get_repositories_by_user(
+        &self,
+        user_id: &str,
+        limit: u32,
+        cursor: Option<String>,
+    ) -> Result<Vec<Repository>, AppError> {
+        // 1. Validate user exists (Standard in-memory check)
+        {
+            let users = self.users.read().await;
+            if !users.contains_key(user_id) {
+                return Err(AppError::UserNotFound);
+            }
+        }
+
+        // 2. Acquire read locks for the relationship maps and entities
+        let c_to_user = self.commit_to_user.read().await;
+        let c_to_repo = self.commit_to_repo.read().await;
+        let all_repos = self.repositories.read().await;
+
+        // 3. Perform the "Join" logic
+        // Get all commit IDs belonging to this user
+        let user_commit_ids: Vec<&String> = c_to_user
+            .iter()
+            .filter(|(_, u_id)| u_id == &user_id)
+            .map(|(c_id, _)| c_id)
+            .collect();
+
+        // Map those commits to unique repository IDs
+        let mut repo_ids: Vec<String> = user_commit_ids
+            .iter()
+            .filter_map(|c_id| c_to_repo.get(*c_id).cloned())
+            .collect();
+
+        // Deduplicate (equivalent to SELECT DISTINCT)
+        repo_ids.sort();
+        repo_ids.dedup();
+
+        // 4. Apply Cursor and Pagination
+        // In your SQL, it's: WHERE r.id > cursor ORDER BY r.id
+        let mut result_repos: Vec<Repository> = repo_ids
+            .into_iter()
+            .filter(|r_id| {
+                if let Some(ref c) = cursor {
+                    r_id > c // Cursor comparison
+                } else {
+                    true
+                }
+            })
+            .filter_map(|r_id| all_repos.get(&r_id).cloned())
+            .collect();
+
+        // Sort by ID to ensure consistent ordering for pagination
+        result_repos.sort_by(|a, b| a.id.cmp(&b.id));
+
+        // 5. Apply Limit
+        let final_result = result_repos
+            .into_iter()
+            .take(limit as usize)
+            .collect();
+
+        Ok(final_result)
+    }    
 }
